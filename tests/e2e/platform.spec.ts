@@ -96,7 +96,7 @@ test("administrator creates a course, switches themes and navigates management",
   }
   await page.goto("/dashboard/audit");
   await expect(
-    page.getByText("COURSE_CREATED", { exact: true }).first(),
+    page.getByText("COURSE CREATED", { exact: true }).first(),
   ).toBeVisible();
 });
 test("instructor authors and publishes, student autosaves and submits, teacher reviews", async ({
@@ -104,15 +104,36 @@ test("instructor authors and publishes, student autosaves and submits, teacher r
   browser,
 }) => {
   await login(page, "instructor@example.test");
+  test.setTimeout(90000);
   await page
     .getByRole("link", { name: "Create examination", exact: true })
     .click();
   const title = "Browser Assessment " + Date.now();
   await page.getByLabel("Title", { exact: true }).fill(title);
+  await page
+    .getByRole("combobox", { name: "Course", exact: true })
+    .selectOption({ label: "Computer Science Fundamentals" });
   await page.getByLabel("Duration in minutes").fill("5");
   await page.getByLabel("Release objective results immediately").check();
   await page.getByLabel("Show correct answers after release").check();
-  await page.locator(".builderlist").getByRole("checkbox").first().check();
+  await page.getByRole("button", { name: "Create inline" }).click();
+  const editor = page.getByRole("dialog");
+  await editor
+    .getByLabel("Question text", { exact: true })
+    .fill("Select the correct browser verification response.");
+  for (let i = 1; i <= 4; i++)
+    await editor
+      .getByLabel(`Option ${i}`, { exact: true })
+      .fill(i === 1 ? "Correct response" : `Distractor ${i}`);
+  await editor.getByRole("checkbox", { name: "Option 1 is correct" }).check();
+  await editor.getByLabel("Points", { exact: true }).fill("2");
+  await editor.getByRole("button", { name: "Create & add question" }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue(title);
+  await page
+    .locator(".builderlist")
+    .getByRole("checkbox", { name: /Explain how database normalization/ })
+    .check();
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: title, exact: true }),
@@ -139,23 +160,36 @@ test("instructor authors and publishes, student autosaves and submits, teacher r
     .click();
   await expect(studentPage).toHaveURL(/\/exam\//);
   const attemptId = studentPage.url().split("/").pop()!;
-  const choice = studentPage.locator(".answer-option input").first();
-  if (await choice.count()) {
-    await choice.check();
-  } else {
+  const snapshot = await (
+    await context.request.get(`/api/attempts/${attemptId}`)
+  ).json();
+  for (let i = 0; i < snapshot.questions.length; i++) {
     await studentPage
-      .getByLabel("Your answer", { exact: true })
-      .fill("A clear synthetic response.");
+      .getByRole("button", { name: `Question ${i + 1}`, exact: true })
+      .click();
+    if (snapshot.questions[i].type === "ESSAY")
+      await studentPage
+        .getByRole("textbox", { name: "Your answer", exact: true })
+        .fill("Normalization reduces redundant records and update anomalies.");
+    else
+      await studentPage
+        .getByRole("radio", { name: "Correct response", exact: true })
+        .check();
+    await expect(
+      studentPage.getByText("All changes saved", { exact: true }),
+    ).toBeVisible();
   }
-  await expect(
-    studentPage.getByText("All changes saved", { exact: true }),
-  ).toBeVisible();
   await studentPage.reload();
-  if (await choice.count()) await expect(choice).toBeChecked();
+  if (snapshot.questions[0].type === "ESSAY")
+    await expect(
+      studentPage.getByRole("textbox", { name: "Your answer", exact: true }),
+    ).toHaveValue(
+      "Normalization reduces redundant records and update anomalies.",
+    );
   else
     await expect(
-      studentPage.getByLabel("Your answer", { exact: true }),
-    ).toHaveValue("A clear synthetic response.");
+      studentPage.getByRole("radio", { name: "Correct response", exact: true }),
+    ).toBeChecked();
   await studentPage.evaluate(() => {
     Object.defineProperty(document, "hidden", {
       configurable: true,
@@ -194,6 +228,46 @@ test("instructor authors and publishes, student autosaves and submits, teacher r
   expect(second.status()).toBe(409);
   await page.goto(`/dashboard/attempts/${attemptId}`);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await page.getByLabel("Awarded points", { exact: true }).fill("4");
+  await page
+    .getByLabel("Instructor feedback", { exact: true })
+    .fill("Clear explanation with a useful example.");
+  await page
+    .getByRole("button", { name: "Save essay grade", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Grade saved." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Finalize & release", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      db.result
+        .findUnique({ where: { attemptId } })
+        .then((r) => !!r?.releasedAt),
+    )
+    .toBe(true);
+  await studentPage.reload();
+  await expect(
+    studentPage.getByText("RELEASED RESULT", { exact: true }),
+  ).toBeVisible();
+  const stored = await db.examAttempt.findUniqueOrThrow({
+    where: { id: attemptId },
+    include: {
+      questions: { include: { answer: { include: { grade: true } } } },
+    },
+  });
+  expect(
+    Number(
+      stored.questions.find((q) => q.type === "SINGLE_CHOICE")?.answer?.grade
+        ?.points,
+    ),
+  ).toBe(2);
   await page.goto("/dashboard/analytics");
   await expect(
     page.getByRole("heading", { name: "Performance analytics" }),
@@ -263,6 +337,9 @@ test("API prevents CSRF, role escalation, cross-account access, and late answers
   await db.examAttempt.update({
     where: { id },
     data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  await page.evaluate(() => {
+    Date.now = () => 1;
   });
   const late = await post(page.request, `attempts/${id}/answer`, {
     questionId: detail.questions[0].id,

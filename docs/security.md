@@ -6,6 +6,8 @@ Passwords use bcrypt cost 12 and a 12-character minimum. Inputs exceeding bcrypt
 
 Every protected API request performs server-side session validation. Role checks and resource ownership apply to reads and writes. Public registration, if explicitly enabled, always creates a student. No public role input is accepted. Instructor requests are scoped to their own courses, banks, exams, submissions, and events.
 
+Administrative account updates lock administrator rows and preserve at least one active administrator, including under simultaneous access changes. Course instructor transfers are blocked once examinations exist, preserving ownership of historical assessments.
+
 ## Request protection
 
 Strict Zod schemas reject unknown properties, including injected scores/roles. Mutations require an exact match with `APP_URL`'s origin and reject cross-site fetch metadata. Session tokens are never stored in localStorage. Login uses database-backed network/email rate limits and temporary account lockouts after repeated failures. Forwarded network headers are ignored unless `TRUST_PROXY=true`; enable that only behind a proxy that overwrites them.

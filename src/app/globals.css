@@ -255,6 +255,7 @@ small,
 }
 .tablewrap {
   overflow-x: auto;
+  position: relative;
 }
 table {
   border-collapse: collapse;

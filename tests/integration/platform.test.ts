@@ -397,4 +397,36 @@ describe("complete secure examination lifecycle", () => {
     expect(results.filter((r) => r.status === "fulfilled").length).toBe(1);
     expect(await db.session.count({ where: { userId: stranger.id } })).toBe(0);
   });
+  it("preserves one administrator during concurrent access changes", async () => {
+    const second = await db.user.create({
+      data: {
+        name: "Second Admin",
+        email: "second@test.invalid",
+        role: "ADMIN",
+        passwordHash: await hashPassword("Test-ExamGuard-2026!"),
+      },
+    });
+    const results = await Promise.allSettled([
+      manageUser(admin, { role: "STUDENT" }, second.id),
+      manageUser(
+        { id: second.id, role: "ADMIN" },
+        { role: "STUDENT" },
+        admin.id,
+      ),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(
+      await db.user.count({ where: { role: "ADMIN", status: "ACTIVE" } }),
+    ).toBe(1);
+  });
+  it("paginates submission history without exposing another student's records", async () => {
+    const { listAttempts } = await import("../../src/server/reporting");
+    const own = await listAttempts(student, 1, "Integration");
+    expect(own.total).toBe(1);
+    expect(own.items).toHaveLength(1);
+    expect((await listAttempts(student, 2, "Integration")).items).toHaveLength(
+      0,
+    );
+    expect((await listAttempts(stranger, 1, "")).total).toBe(0);
+  });
 });

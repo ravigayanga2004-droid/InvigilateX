@@ -41,7 +41,12 @@ import {
   expireAttempts,
   lockAttempt,
 } from "@/server/attempts";
-import { dashboard, integrity, csvEscape } from "@/server/reporting";
+import {
+  dashboard,
+  integrity,
+  csvEscape,
+  listAttempts,
+} from "@/server/reporting";
 import { createAuditLog } from "@/lib/audit";
 import { assessmentInsights } from "@/server/insights";
 export const dynamic = "force-dynamic";
@@ -131,6 +136,8 @@ async function handle(
     const skip = (page - 1) * 25;
     const query = (url.searchParams.get("q") || "").slice(0, 100);
     if (method === "GET") {
+      if (route === "attempts")
+        return Response.json(await listAttempts(user, page, query));
       if (route === "insights")
         return Response.json(await assessmentInsights(user));
       if (route === "dashboard") return Response.json(await dashboard(user));
@@ -504,6 +511,8 @@ async function handle(
       }
     }
     if (method === "PATCH") {
+      if (path[0] === "courses" && path.length === 2)
+        return Response.json(await saveCourse(user, body, path[1]));
       if (path[0] === "exams" && path.length === 2)
         return Response.json(await saveExam(user, body, path[1]));
       if (path[0] === "people" && path.length === 2)

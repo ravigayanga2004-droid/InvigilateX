@@ -1,5 +1,7 @@
 # API reference
 
+Additional management endpoints: `PATCH /api/courses/:id` edits a course (administrator only; instructor transfer is blocked after examinations exist). `GET /api/institution` exposes the institution's public name, support email, and activity guidance. `GET /api/insights` gives authorized staff question facility, a discrimination approximation, and course usage.
+
 All endpoints are under `/api`. JSON success responses contain the relevant record or operation result. Errors use `{ "error": "safe message", "errorId": "optional correlation ID" }`. Standard statuses: 200, 201, 400, 401, 403, 404, 409, 413, 429, and 500. Protected requests require the session cookie. POST/PATCH requests require a same-origin `Origin` and JSON body. Unknown fields are rejected. No public endpoint accepts a score for an objective question.
 
 | Method    | Route                                                                 | Purpose / authorization                                                         |

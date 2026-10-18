@@ -6,7 +6,7 @@ A privacy-conscious online examination platform for educators, students, and adm
 
 - Separate administrator, instructor, and student workspaces with responsive navigation and persistent light/dark themes.
 - Secure email/password sessions, role/ownership checks, throttling, lockouts, and one-time account recovery.
-- Courses, manual and CSV enrollment, question banks, five question types, atomic CSV/JSON question imports, draft authoring, question ordering, publishing, duplication, archiving, and selected-student assignments.
+- Courses and editing, manual and CSV enrollment, question banks, five question types, versioned question revisions, inline question creation, atomic CSV/JSON imports, draft authoring, ordering, publishing, duplication, archiving, and selected-student assignments.
 - Server-timed, randomized frozen attempts; autosave with retry status; resume, review flags, progress, final confirmation, and idempotent submission.
 - Server-side objective/partial-credit scoring, manual essay feedback, audited grade reopening, result release, printable summaries, and CSV reports.
 - Analytics, transparent browser-activity timelines, review records, notifications, and audit logs.
