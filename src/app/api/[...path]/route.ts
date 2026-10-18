@@ -43,6 +43,7 @@ import {
 } from "@/server/attempts";
 import { dashboard, integrity, csvEscape } from "@/server/reporting";
 import { createAuditLog } from "@/lib/audit";
+import { assessmentInsights } from "@/server/insights";
 export const dynamic = "force-dynamic";
 async function handle(
   request: Request,
@@ -120,6 +121,7 @@ async function handle(
     const skip = (page - 1) * 25;
     const query = (url.searchParams.get("q") || "").slice(0, 100);
     if (method === "GET") {
+      if (route === "insights") return Response.json(await assessmentInsights(user));
       if (route === "dashboard") return Response.json(await dashboard(user));
       if (route === "exams") {
         const where = {
