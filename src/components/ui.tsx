@@ -250,7 +250,7 @@ export function date(
   options?: Intl.DateTimeFormatOptions,
 ) {
   return value
-    ? new Date(value).toLocaleDateString(
+    ? new Date(value).toLocaleString(
         undefined,
         options || { month: "short", day: "numeric", year: "numeric" },
       )
