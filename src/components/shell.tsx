@@ -24,7 +24,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { ThemeToggle, api, useToast } from "./ui";
+import { ThemeToggle, api, useToast, useResource } from "./ui";
 export type Viewer = {
   id: string;
   name: string;
@@ -41,6 +41,10 @@ export function Shell({
   const path = usePathname();
   const router = useRouter();
   const toast = useToast();
+  const institution = useResource<{
+    institutionName?: string;
+    supportEmail?: string;
+  }>("institution");
   const [open, setOpen] = useState(false);
   const student = user.role === "STUDENT";
   const links = [
@@ -141,7 +145,9 @@ export function Shell({
             EG
           </span>
           <div>
-            <strong>Academic workspace</strong>
+            <strong>
+              {institution.data?.institutionName || "Academic workspace"}
+            </strong>
             <small style={{ display: "block", fontSize: 9 }}>
               {student ? "Student portal" : "Institution management"}
             </small>

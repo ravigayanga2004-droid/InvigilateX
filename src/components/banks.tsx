@@ -25,6 +25,7 @@ export function Banks() {
     `questions${bankId ? `?bankId=${bankId}` : ""}`,
   );
   const [create, setCreate] = useState(false);
+  const [revision, setRevision] = useState<QuestionRow | null>(null);
   const [type, setType] = useState("SINGLE_CHOICE");
   const [optionCount, setOptionCount] = useState(4);
   const [retire, setRetire] = useState("");
@@ -43,7 +44,13 @@ export function Banks() {
           <h1>Question banks</h1>
           <p>Build a thoughtful library. Reuse it with confidence.</p>
         </div>
-        <button className="btn primary" onClick={() => setCreate((v) => !v)}>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setRevision(null);
+            setCreate((v) => !v);
+          }}
+        >
           <Plus size={15} />
           {create ? "Close editor" : "Create question"}
         </button>
@@ -102,6 +109,7 @@ export function Banks() {
       </section>
       {create && (
         <form
+          key={revision?.id || "new"}
           className="card stack"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -150,7 +158,16 @@ export function Banks() {
             }
           }}
         >
-          <h2>Question editor</h2>
+          <h2>
+            {revision ? "Revise question as a new version" : "Question editor"}
+          </h2>
+          {revision && (
+            <div className="notice">
+              Saving creates a revised copy. Existing exams and attempts keep
+              their original question. Retire the old version when it should no
+              longer be selected.
+            </div>
+          )}
           {!bankId && (
             <div className="notice">Select a bank above before saving.</div>
           )}
@@ -180,13 +197,19 @@ export function Banks() {
                 min={0.01}
                 step={0.01}
                 max={1000}
-                defaultValue={1}
+                defaultValue={revision?.points || 1}
               />
             </label>
           </div>
           <label className="field">
             Question text
-            <textarea name="text" required minLength={5} maxLength={10000} />
+            <textarea
+              name="text"
+              required
+              minLength={5}
+              maxLength={10000}
+              defaultValue={revision?.text}
+            />
           </label>
           {["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"].includes(
             type,
@@ -203,6 +226,7 @@ export function Banks() {
                   <div className="row" key={`${type}-${i}`}>
                     <label className="checkbox">
                       <input
+                        defaultChecked={revision?.options[i]?.isCorrect}
                         name={`correct-${i}`}
                         type="checkbox"
                         aria-label={`Option ${i + 1} is correct`}
@@ -214,11 +238,12 @@ export function Banks() {
                         name={`option-${i}`}
                         required
                         defaultValue={
-                          type === "TRUE_FALSE"
+                          revision?.options[i]?.text ||
+                          (type === "TRUE_FALSE"
                             ? i === 0
                               ? "True"
                               : "False"
-                            : ""
+                            : "")
                         }
                       />
                     </label>
@@ -250,13 +275,20 @@ export function Banks() {
           {type === "SHORT_ANSWER" && (
             <label className="field">
               Reference answer (normalized exact match)
-              <input name="correctText" required />
+              <input
+                name="correctText"
+                required
+                defaultValue={revision?.correctText || ""}
+              />
             </label>
           )}
           <div className="grid3">
             <label className="field">
               Difficulty
-              <select name="difficulty">
+              <select
+                name="difficulty"
+                defaultValue={revision?.difficulty || "MEDIUM"}
+              >
                 <option>EASY</option>
                 <option>MEDIUM</option>
                 <option>HARD</option>
@@ -264,16 +296,16 @@ export function Banks() {
             </label>
             <label className="field">
               Topic
-              <input name="topic" />
+              <input name="topic" defaultValue={revision?.topic} />
             </label>
             <label className="field">
               Tags (comma separated)
-              <input name="tags" />
+              <input name="tags" defaultValue={revision?.tags?.join(", ")} />
             </label>
           </div>
           <label className="field">
             Explanation / grading guidance
-            <textarea name="explanation" />
+            <textarea name="explanation" defaultValue={revision?.explanation} />
           </label>
           <button className="btn primary" disabled={!bankId || busy}>
             {busy ? "Saving…" : "Save question"}
@@ -299,13 +331,28 @@ export function Banks() {
                     {q.difficulty} · {q.points} points
                   </small>
                 </div>
-                <button
-                  className="iconbtn"
-                  aria-label={`Retire ${q.text}`}
-                  onClick={() => setRetire(q.id)}
-                >
-                  <Archive size={14} />
-                </button>
+                <div className="row">
+                  <button
+                    className="btn small"
+                    onClick={() => {
+                      setRevision(q);
+                      setBankId(q.questionBankId);
+                      setType(q.type);
+                      setOptionCount(Math.max(2, q.options.length));
+                      setCreate(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Revise
+                  </button>
+                  <button
+                    className="iconbtn"
+                    aria-label={`Retire ${q.text}`}
+                    onClick={() => setRetire(q.id)}
+                  >
+                    <Archive size={14} />
+                  </button>
+                </div>
               </div>
               <h3 style={{ margin: "12px 0" }}>{q.text}</h3>
               <details>

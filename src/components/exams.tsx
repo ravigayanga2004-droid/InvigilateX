@@ -27,6 +27,7 @@ import {
   Empty,
 } from "./ui";
 import { ExamTable } from "./overview";
+import { QuickQuestion, type CreatedQuestion } from "./quick-question";
 export function Exams({ user }: { user: Viewer }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -466,8 +467,12 @@ export function AttemptTable({ attempts }: { attempts: AttemptRow[] }) {
   );
 }
 export function Submissions({ user }: { user: Viewer }) {
-  const { data, error, loading, reload } =
-    useResource<DashboardData>("dashboard");
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+  const { data, error, loading, reload } = useResource<{
+    items: AttemptRow[];
+    total: number;
+  }>(`attempts?page=${page}&q=${encodeURIComponent(query)}`);
   return (
     <>
       <div className="pagehead between">
@@ -485,13 +490,45 @@ export function Submissions({ user }: { user: Viewer }) {
           </a>
         )}
       </div>
+      <label className="field" style={{ maxWidth: 420, marginBottom: 20 }}>
+        Search examination
+        <input
+          placeholder="Find a submission by exam title…"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(1);
+          }}
+        />
+      </label>
       {loading ? (
         <Loading />
       ) : error ? (
         <Failure message={error} retry={reload} />
       ) : (
         <section className="card">
-          <AttemptTable attempts={data?.attempts || []} />
+          <AttemptTable attempts={data?.items || []} />
+          <div className="between" style={{ marginTop: 20 }}>
+            <small>
+              {data?.total || 0} attempts · Page {page}
+            </small>
+            <div className="row">
+              <button
+                className="btn small"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="btn small"
+                disabled={page * 25 >= (data?.total || 0)}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </section>
       )}
     </>
@@ -540,6 +577,12 @@ function BuilderForm({
   );
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
+  const [quick, setQuick] = useState(false);
+  const [created, setCreated] = useState<CreatedQuestion[]>([]);
+  const availableQuestions = [
+    ...bankQuestions,
+    ...created.filter((q) => !bankQuestions.some((b) => b.id === q.id)),
+  ];
   const localTime = (value: string) => {
     const d = new Date(value);
     return new Date(+d - d.getTimezoneOffset() * 60000)
@@ -760,10 +803,24 @@ function BuilderForm({
         <section className="card stack">
           <div className="between">
             <h2>Questions · {selected.length} selected</h2>
-            <Link href="/dashboard/banks" className="btn small">
-              <Plus size={13} />
-              Create or import questions
-            </Link>
+            <div className="row">
+              <button
+                className="btn small"
+                type="button"
+                onClick={() => setQuick(true)}
+              >
+                Create inline
+              </button>
+              <Link
+                href="/dashboard/banks"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn small"
+              >
+                <Plus size={13} />
+                Create or import questions
+              </Link>
+            </div>
           </div>
           <label className="field">
             Find a bank question
@@ -774,7 +831,7 @@ function BuilderForm({
             />
           </label>
           <div className="builderlist">
-            {bankQuestions
+            {availableQuestions
               .filter((q) =>
                 q.text.toLowerCase().includes(search.toLowerCase()),
               )
@@ -831,7 +888,7 @@ function BuilderForm({
                   </div>
                 );
               })}
-            {!bankQuestions.length && (
+            {!availableQuestions.length && (
               <Empty
                 title="Your question bank is empty"
                 description="Create questions in Question banks, then return to add them here."
@@ -845,7 +902,10 @@ function BuilderForm({
                 <div key={entry.questionId} className="between">
                   <span>
                     {i + 1}.{" "}
-                    {bankQuestions.find((q) => q.id === entry.questionId)?.text}
+                    {
+                      availableQuestions.find((q) => q.id === entry.questionId)
+                        ?.text
+                    }
                   </span>
                   <div className="row">
                     <button
@@ -893,6 +953,18 @@ function BuilderForm({
           </button>
         </div>
       </form>
+      {quick && (
+        <QuickQuestion
+          onClose={() => setQuick(false)}
+          onCreated={(q) => {
+            setCreated((prev) => [...prev, q]);
+            setSelected((prev) => [
+              ...prev,
+              { questionId: q.id, points: Number(q.points) },
+            ]);
+          }}
+        />
+      )}
     </>
   );
 }

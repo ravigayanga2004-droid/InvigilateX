@@ -14,7 +14,7 @@ import { createAuditLog } from "@/lib/audit";
 import { lockAttempt } from "./attempts";
 import { totals } from "@/lib/assessment";
 type Actor = { id: string; role: Role };
-export async function saveCourse(user: Actor, body: unknown) {
+export async function saveCourse(user: Actor, body: unknown, id?: string) {
   requireRole(user.role, ["ADMIN"]);
   const input = z
     .object({
@@ -30,10 +30,23 @@ export async function saveCourse(user: Actor, body: unknown) {
   });
   invariant(instructor, 400, "Choose an active instructor.");
   return db.$transaction(async (tx) => {
-    const course = await tx.course.create({ data: input });
+    if (id) {
+      await tx.$queryRaw`SELECT id FROM "Course" WHERE id=${id} FOR UPDATE`;
+      const existing = await tx.course.findUnique({ where: { id } });
+      invariant(existing, 404, "Course not found.");
+      invariant(
+        existing.instructorId === input.instructorId ||
+          (await tx.exam.count({ where: { courseId: id } })) === 0,
+        409,
+        "A course with examinations must retain its instructor. Create a new course to transfer responsibility.",
+      );
+    }
+    const course = id
+      ? await tx.course.update({ where: { id }, data: input })
+      : await tx.course.create({ data: input });
     await createAuditLog(
       user.id,
-      "COURSE_CREATED",
+      id ? "COURSE_UPDATED" : "COURSE_CREATED",
       "Course",
       course.id,
       {},
@@ -136,6 +149,22 @@ export async function manageUser(user: Actor, body: unknown, id?: string) {
     "You cannot remove your own administrator access.",
   );
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE role='ADMIN' ORDER BY id FOR UPDATE`;
+    const target = await tx.user.findUnique({ where: { id } });
+    invariant(target, 404, "User not found.");
+    if (
+      target.role === "ADMIN" &&
+      ((input.role && input.role !== "ADMIN") ||
+        (input.status && input.status !== "ACTIVE"))
+    ) {
+      invariant(
+        (await tx.user.count({
+          where: { role: "ADMIN", status: "ACTIVE", id: { not: id } },
+        })) > 0,
+        409,
+        "Keep at least one active administrator.",
+      );
+    }
     const updated = await tx.user.update({
       where: { id },
       data: {

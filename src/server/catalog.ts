@@ -19,6 +19,7 @@ export function examScope(user: Actor): Prisma.ExamWhereInput {
   };
 }
 export async function ownedExam(user: Actor, id: string) {
+  requireRole(user.role, ["ADMIN", "INSTRUCTOR"]);
   const exam = await db.exam.findUnique({
     where: { id },
     include: {
@@ -27,6 +28,7 @@ export async function ownedExam(user: Actor, id: string) {
         include: { question: { include: { options: true } } },
       },
       settings: true,
+      course: true,
     },
   });
   invariant(exam, 404, "Exam not found.");
@@ -228,6 +230,7 @@ export async function createQuestion(user: Actor, body: unknown) {
 }
 export function parseImport(format: string, content: string, bankId: string) {
   let rows: unknown[];
+  const rowErrors = new Map<number, string[]>();
   if (format === "csv") {
     const csv = Papa.parse<Record<string, string>>(content, {
       header: true,
@@ -238,14 +241,22 @@ export function parseImport(format: string, content: string, bankId: string) {
       400,
       "Invalid CSV: " + csv.errors.map((e) => e.message).join(", "),
     );
-    rows = csv.data.map((row) => ({
-      ...row,
-      points: Number(row.points || 1),
-      tags: row.tags ? row.tags.split("|") : [],
-      options: row.options ? JSON.parse(row.options) : [],
-      questionBankId: bankId,
-      correctText: row.correctText || null,
-    }));
+    rows = csv.data.map((row, index) => {
+      let options: unknown = [];
+      try {
+        options = row.options ? JSON.parse(row.options) : [];
+      } catch {
+        rowErrors.set(index, ["Options must contain valid JSON."]);
+      }
+      return {
+        ...row,
+        points: Number(row.points || 1),
+        tags: row.tags ? row.tags.split("|") : [],
+        options,
+        questionBankId: bankId,
+        correctText: row.correctText || null,
+      };
+    });
   } else {
     const value = JSON.parse(content);
     invariant(
@@ -264,8 +275,11 @@ export function parseImport(format: string, content: string, bankId: string) {
     const parsed = questionSchema.safeParse(row);
     return {
       row: index + 1,
-      data: parsed.success ? parsed.data : null,
-      errors: parsed.success ? [] : parsed.error.issues.map((i) => i.message),
+      data: parsed.success && !rowErrors.has(index) ? parsed.data : null,
+      errors: [
+        ...(rowErrors.get(index) || []),
+        ...(parsed.success ? [] : parsed.error.issues.map((i) => i.message)),
+      ],
     };
   });
 }

@@ -19,6 +19,7 @@ type Course = {
   name: string;
   code: string;
   description: string;
+  instructorId: string;
   instructor: { name: string };
   _count: { enrollments: number; exams: number };
 };
@@ -29,6 +30,7 @@ export function Courses({ user }: { user: Viewer }) {
   );
   const toast = useToast();
   const [create, setCreate] = useState(false);
+  const [editing, setEditing] = useState<Course | null>(null);
   const [courseId, setCourseId] = useState("");
   const [emails, setEmails] = useState("");
   const [csv, setCsv] = useState("");
@@ -44,7 +46,13 @@ export function Courses({ user }: { user: Viewer }) {
           <p>A shared foundation for every assessment.</p>
         </div>
         {user.role === "ADMIN" && (
-          <button className="btn primary" onClick={() => setCreate((v) => !v)}>
+          <button
+            className="btn primary"
+            onClick={() => {
+              setEditing(null);
+              setCreate((v) => !v);
+            }}
+          >
             <Plus size={15} />
             {create ? "Close form" : "Create course"}
           </button>
@@ -52,6 +60,7 @@ export function Courses({ user }: { user: Viewer }) {
       </div>
       {create && (
         <form
+          key={editing?.id || "new-course"}
           className="card stack"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -59,8 +68,12 @@ export function Courses({ user }: { user: Viewer }) {
             setBusy(true);
             try {
               const fd = new FormData(form);
-              await api("courses", "POST", Object.fromEntries(fd));
-              toast("Course created.");
+              await api(
+                editing ? `courses/${editing.id}` : "courses",
+                editing ? "PATCH" : "POST",
+                Object.fromEntries(fd),
+              );
+              toast(editing ? "Course updated." : "Course created.");
               setCreate(false);
               void reload();
             } catch (e) {
@@ -70,20 +83,34 @@ export function Courses({ user }: { user: Viewer }) {
             }
           }}
         >
-          <h2>New course</h2>
+          <h2>{editing ? "Edit course" : "New course"}</h2>
           <div className="grid2">
             <label className="field">
               Course name
-              <input name="name" required minLength={3} />
+              <input
+                name="name"
+                required
+                minLength={3}
+                defaultValue={editing?.name}
+              />
             </label>
             <label className="field">
               Course code
-              <input name="code" required minLength={2} />
+              <input
+                name="code"
+                required
+                minLength={2}
+                defaultValue={editing?.code}
+              />
             </label>
           </div>
           <label className="field">
             Instructor
-            <select name="instructorId" required>
+            <select
+              name="instructorId"
+              required
+              defaultValue={editing?.instructorId || ""}
+            >
               <option value="">Select an instructor</option>
               {instructors.data?.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -94,10 +121,10 @@ export function Courses({ user }: { user: Viewer }) {
           </label>
           <label className="field">
             Description
-            <textarea name="description" />
+            <textarea name="description" defaultValue={editing?.description} />
           </label>
           <button disabled={busy} className="btn primary">
-            {busy ? "Creating…" : "Create course"}
+            {busy ? "Saving…" : editing ? "Save course" : "Create course"}
           </button>
         </form>
       )}
@@ -124,6 +151,18 @@ export function Courses({ user }: { user: Viewer }) {
               <p className="muted" style={{ fontSize: 11 }}>
                 Instructor · {c.instructor.name}
               </p>
+              {user.role === "ADMIN" && (
+                <button
+                  className="btn small"
+                  onClick={() => {
+                    setEditing(c);
+                    setCreate(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Edit course
+                </button>
+              )}
               <div className="between" style={{ fontSize: 11 }}>
                 <span className="row">
                   <Users size={14} />
@@ -406,6 +445,49 @@ export function People({ user }: { user: Viewer }) {
                   <tr key={p.id}>
                     <td>
                       <strong>{p.name}</strong>
+                      <details style={{ marginTop: 6 }}>
+                        <summary
+                          style={{
+                            fontSize: 10,
+                            cursor: "pointer",
+                            color: "var(--accent)",
+                          }}
+                        >
+                          Edit name
+                        </summary>
+                        <form
+                          className="row"
+                          style={{ marginTop: 8 }}
+                          onSubmit={async (event) => {
+                            event.preventDefault();
+                            try {
+                              const fd = new FormData(event.currentTarget);
+                              await api(`people/${p.id}`, "PATCH", {
+                                name: fd.get("name"),
+                              });
+                              toast(
+                                "Name updated. Existing sessions were ended.",
+                              );
+                              void reload();
+                            } catch (error) {
+                              toast((error as Error).message, true);
+                            }
+                          }}
+                        >
+                          <label className="sr-only" htmlFor={`name-${p.id}`}>
+                            Name for {p.name}
+                          </label>
+                          <input
+                            className="input"
+                            id={`name-${p.id}`}
+                            name="name"
+                            required
+                            minLength={2}
+                            defaultValue={p.name}
+                          />
+                          <button className="btn small">Save</button>
+                        </form>
+                      </details>
                       <small style={{ display: "block" }}>{p.email}</small>
                     </td>
                     <td>

@@ -255,6 +255,7 @@ small,
 }
 .tablewrap {
   overflow-x: auto;
+  position: relative;
 }
 table {
   border-collapse: collapse;
@@ -1023,5 +1024,36 @@ td strong {
   body {
     background: white;
     color: black;
+  }
+}
+
+.stack > *,
+.grid2 > *,
+.grid3 > *,
+.grid4 > * {
+  min-width: 0;
+}
+.content,
+.main {
+  min-width: 0;
+}
+.tablewrap {
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  .breadcrumbs {
+    gap: 7px;
+    font-size: 10px;
+  }
+  .topright {
+    gap: 6px;
+  }
+  .topright .iconbtn {
+    width: 32px;
+    height: 32px;
+  }
+  .footer span {
+    max-width: 100%;
+    flex-wrap: wrap;
   }
 }

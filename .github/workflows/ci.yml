@@ -1,0 +1,56 @@
+name: Verify ExamGuard
+on:
+  push:
+    branches: [main, "feat/**", "chore/**"]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: examguard
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: examguard
+        ports: ["54329:5432"]
+        options: >-
+          --health-cmd "pg_isready -U examguard -d examguard"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://examguard:ci-only-password@localhost:54329/examguard?schema=public
+      TEST_DATABASE_URL: postgresql://examguard:ci-only-password@localhost:54329/examguard_test?schema=public
+      APP_URL: http://localhost:3000
+      SESSION_SECRET: ci-only-session-secret-not-for-production-123456
+      CRON_SECRET: ci-only-expiration-secret-not-for-production-123456
+      SEED_DEMO: "true"
+      ALLOW_REGISTRATION: "false"
+      PGPASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: createdb -h localhost -p 54329 -U examguard examguard_test
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm audit --omit=dev
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-diagnostics
+          path: test-results/
+          retention-days: 7

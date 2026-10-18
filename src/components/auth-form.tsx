@@ -14,7 +14,11 @@ const schema = z.object({
   token: z.string(),
 });
 export function AuthForm({ mode }: { mode: string }) {
-  const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState("");
