@@ -23,6 +23,8 @@ export type ExamRow = {
 };
 export type QuestionRow = {
   id: string;
+  questionBankId: string;
+  tags: string[];
   text: string;
   type: string;
   points: string;
