@@ -44,7 +44,13 @@ export function Banks() {
           <h1>Question banks</h1>
           <p>Build a thoughtful library. Reuse it with confidence.</p>
         </div>
-        <button className="btn primary" onClick={() => { setRevision(null); setCreate((v) => !v); }}>
+        <button
+          className="btn primary"
+          onClick={() => {
+            setRevision(null);
+            setCreate((v) => !v);
+          }}
+        >
           <Plus size={15} />
           {create ? "Close editor" : "Create question"}
         </button>
@@ -152,8 +158,16 @@ export function Banks() {
             }
           }}
         >
-          <h2>{revision ? "Revise question as a new version" : "Question editor"}</h2>
-          {revision && <div className="notice">Saving creates a revised copy. Existing exams and attempts keep their original question. Retire the old version when it should no longer be selected.</div>}
+          <h2>
+            {revision ? "Revise question as a new version" : "Question editor"}
+          </h2>
+          {revision && (
+            <div className="notice">
+              Saving creates a revised copy. Existing exams and attempts keep
+              their original question. Retire the old version when it should no
+              longer be selected.
+            </div>
+          )}
           {!bankId && (
             <div className="notice">Select a bank above before saving.</div>
           )}
@@ -189,7 +203,13 @@ export function Banks() {
           </div>
           <label className="field">
             Question text
-            <textarea name="text" required minLength={5} maxLength={10000} defaultValue={revision?.text} />
+            <textarea
+              name="text"
+              required
+              minLength={5}
+              maxLength={10000}
+              defaultValue={revision?.text}
+            />
           </label>
           {["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"].includes(
             type,
@@ -218,11 +238,12 @@ export function Banks() {
                         name={`option-${i}`}
                         required
                         defaultValue={
-                          type === "TRUE_FALSE"
+                          revision?.options[i]?.text ||
+                          (type === "TRUE_FALSE"
                             ? i === 0
                               ? "True"
                               : "False"
-                            : ""
+                            : "")
                         }
                       />
                     </label>
@@ -254,13 +275,20 @@ export function Banks() {
           {type === "SHORT_ANSWER" && (
             <label className="field">
               Reference answer (normalized exact match)
-              <input name="correctText" required defaultValue={revision?.correctText || ""} />
+              <input
+                name="correctText"
+                required
+                defaultValue={revision?.correctText || ""}
+              />
             </label>
           )}
           <div className="grid3">
             <label className="field">
               Difficulty
-              <select name="difficulty" defaultValue={revision?.difficulty || "MEDIUM"}>
+              <select
+                name="difficulty"
+                defaultValue={revision?.difficulty || "MEDIUM"}
+              >
                 <option>EASY</option>
                 <option>MEDIUM</option>
                 <option>HARD</option>
@@ -303,13 +331,28 @@ export function Banks() {
                     {q.difficulty} · {q.points} points
                   </small>
                 </div>
-                <div className="row"><button className="btn small" onClick={() => {setRevision(q);setBankId(q.questionBankId);setType(q.type);setOptionCount(Math.max(2,q.options.length));setCreate(true);window.scrollTo({top:0,behavior:"smooth"});}}>Revise</button><button
-                  className="iconbtn"
-                  aria-label={`Retire ${q.text}`}
-                  onClick={() => setRetire(q.id)}
-                >
-                  <Archive size={14} />
-                </button></div>
+                <div className="row">
+                  <button
+                    className="btn small"
+                    onClick={() => {
+                      setRevision(q);
+                      setBankId(q.questionBankId);
+                      setType(q.type);
+                      setOptionCount(Math.max(2, q.options.length));
+                      setCreate(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Revise
+                  </button>
+                  <button
+                    className="iconbtn"
+                    aria-label={`Retire ${q.text}`}
+                    onClick={() => setRetire(q.id)}
+                  >
+                    <Archive size={14} />
+                  </button>
+                </div>
               </div>
               <h3 style={{ margin: "12px 0" }}>{q.text}</h3>
               <details>

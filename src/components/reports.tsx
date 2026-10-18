@@ -137,10 +137,83 @@ export function Analytics({ user }: { user: Viewer }) {
     </div>
   );
 }
-function QuestionInsights(){
-  const {data,error,loading,reload}=useResource<{questions:{id:string;text:string;exam:string;responses:number;facility:number;missed:number;discrimination:number|null}[];courses:{name:string;code:string;students:number;exams:number}[];sampleSize:number}>("insights");
-  if(loading)return <Loading/>;if(error||!data)return <Failure message={error} retry={reload}/>;
-  return <><section className="card stack"><h2>Question analysis</h2><p className="muted" style={{fontSize:12}}>Most-missed questions first, from the latest {data.sampleSize} graded attempts (up to 500). Facility is average earned credit. Discrimination compares the top and bottom 27% within an exam and requires at least 10 responses.</p>{data.questions.length?<div className="tablewrap"><table><thead><tr><th>Question</th><th>Responses</th><th>Facility</th><th>Not full credit</th><th>Discrimination</th></tr></thead><tbody>{data.questions.map(q=><tr key={q.id}><td><strong>{q.text}</strong><small style={{display:"block"}}>{q.exam}</small></td><td>{q.responses}</td><td>{q.facility}%</td><td>{q.missed}</td><td>{q.discrimination??"Insufficient data"}</td></tr>)}</tbody></table></div>:<Empty title="Question insights will appear after grading"/>}</section><section className="card stack"><h2>Usage by course</h2>{data.courses.map(c=><div className="between" key={c.code}><div><strong>{c.name}</strong><p className="muted" style={{fontSize:11}}>{c.code}</p></div><span>{c.students} students · {c.exams} exams</span></div>)}{!data.courses.length&&<Empty title="No courses yet"/>}</section></>;
+function QuestionInsights() {
+  const { data, error, loading, reload } = useResource<{
+    questions: {
+      id: string;
+      text: string;
+      exam: string;
+      responses: number;
+      facility: number;
+      missed: number;
+      discrimination: number | null;
+    }[];
+    courses: { name: string; code: string; students: number; exams: number }[];
+    sampleSize: number;
+  }>("insights");
+  if (loading) return <Loading />;
+  if (error || !data) return <Failure message={error} retry={reload} />;
+  return (
+    <>
+      <section className="card stack">
+        <h2>Question analysis</h2>
+        <p className="muted" style={{ fontSize: 12 }}>
+          Most-missed questions first, from the latest {data.sampleSize} graded
+          attempts (up to 500). Facility is average earned credit.
+          Discrimination compares the top and bottom 27% within an exam and
+          requires at least 10 responses.
+        </p>
+        {data.questions.length ? (
+          <div className="tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Question</th>
+                  <th>Responses</th>
+                  <th>Facility</th>
+                  <th>Not full credit</th>
+                  <th>Discrimination</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.questions.map((q) => (
+                  <tr key={q.id}>
+                    <td>
+                      <strong>{q.text}</strong>
+                      <small style={{ display: "block" }}>{q.exam}</small>
+                    </td>
+                    <td>{q.responses}</td>
+                    <td>{q.facility}%</td>
+                    <td>{q.missed}</td>
+                    <td>{q.discrimination ?? "Insufficient data"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty title="Question insights will appear after grading" />
+        )}
+      </section>
+      <section className="card stack">
+        <h2>Usage by course</h2>
+        {data.courses.map((c) => (
+          <div className="between" key={c.code}>
+            <div>
+              <strong>{c.name}</strong>
+              <p className="muted" style={{ fontSize: 11 }}>
+                {c.code}
+              </p>
+            </div>
+            <span>
+              {c.students} students · {c.exams} exams
+            </span>
+          </div>
+        ))}
+        {!data.courses.length && <Empty title="No courses yet" />}
+      </section>
+    </>
+  );
 }
 type IntegrityEntry = {
   id: string;

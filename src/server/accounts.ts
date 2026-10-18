@@ -66,17 +66,15 @@ async function deliver(email: string, raw: string, purpose: string) {
   const route = purpose === "VERIFY" ? "verify-email" : "reset-password";
   const link = `${process.env.APP_URL}/${route}?token=${raw}`;
   if (process.env.SMTP_URL) {
-    await nodemailer
-      .createTransport(process.env.SMTP_URL)
-      .sendMail({
-        from: process.env.MAIL_FROM,
-        to: email,
-        subject:
-          purpose === "VERIFY"
-            ? "Verify your ExamGuard email"
-            : "Reset your ExamGuard password",
-        text: `Open this one-time link within 30 minutes: ${link}`,
-      });
+    await nodemailer.createTransport(process.env.SMTP_URL).sendMail({
+      from: process.env.MAIL_FROM,
+      to: email,
+      subject:
+        purpose === "VERIFY"
+          ? "Verify your ExamGuard email"
+          : "Reset your ExamGuard password",
+      text: `Open this one-time link within 30 minutes: ${link}`,
+    });
   } else {
     invariant(
       process.env.NODE_ENV !== "production",

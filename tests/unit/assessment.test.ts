@@ -99,7 +99,7 @@ describe("assessment rules", () => {
 });
 describe("security contracts", () => {
   it("neutralizes formula prefixes in exported spreadsheet cells", () => {
-    expect(csvEscape("  =HYPERLINK(\"https://example.test\")")).toMatch(/^"'/);
+    expect(csvEscape('  =HYPERLINK("https://example.test")')).toMatch(/^"'/);
     expect(csvEscape("\n+1")).toMatch(/^"'/);
     expect(csvEscape("Safe, ordinary text")).toBe('"Safe, ordinary text"');
   });

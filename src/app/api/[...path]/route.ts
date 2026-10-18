@@ -61,6 +61,16 @@ async function handle(
       await db.$queryRaw`SELECT 1`;
       return Response.json({ status: "ready" });
     }
+    if (route === "institution" && method === "GET") {
+      const settings = await db.platformSetting.findMany({
+        where: {
+          key: { in: ["institutionName", "supportEmail", "integrityNotice"] },
+        },
+      });
+      return Response.json(
+        Object.fromEntries(settings.map((s) => [s.key, s.value])),
+      );
+    }
     if (route === "cron/expire") {
       invariant(
         method === "GET" &&
@@ -121,7 +131,8 @@ async function handle(
     const skip = (page - 1) * 25;
     const query = (url.searchParams.get("q") || "").slice(0, 100);
     if (method === "GET") {
-      if (route === "insights") return Response.json(await assessmentInsights(user));
+      if (route === "insights")
+        return Response.json(await assessmentInsights(user));
       if (route === "dashboard") return Response.json(await dashboard(user));
       if (route === "exams") {
         const where = {

@@ -406,6 +406,49 @@ export function People({ user }: { user: Viewer }) {
                   <tr key={p.id}>
                     <td>
                       <strong>{p.name}</strong>
+                      <details style={{ marginTop: 6 }}>
+                        <summary
+                          style={{
+                            fontSize: 10,
+                            cursor: "pointer",
+                            color: "var(--accent)",
+                          }}
+                        >
+                          Edit name
+                        </summary>
+                        <form
+                          className="row"
+                          style={{ marginTop: 8 }}
+                          onSubmit={async (event) => {
+                            event.preventDefault();
+                            try {
+                              const fd = new FormData(event.currentTarget);
+                              await api(`people/${p.id}`, "PATCH", {
+                                name: fd.get("name"),
+                              });
+                              toast(
+                                "Name updated. Existing sessions were ended.",
+                              );
+                              void reload();
+                            } catch (error) {
+                              toast((error as Error).message, true);
+                            }
+                          }}
+                        >
+                          <label className="sr-only" htmlFor={`name-${p.id}`}>
+                            Name for {p.name}
+                          </label>
+                          <input
+                            className="input"
+                            id={`name-${p.id}`}
+                            name="name"
+                            required
+                            minLength={2}
+                            defaultValue={p.name}
+                          />
+                          <button className="btn small">Save</button>
+                        </form>
+                      </details>
                       <small style={{ display: "block" }}>{p.email}</small>
                     </td>
                     <td>
