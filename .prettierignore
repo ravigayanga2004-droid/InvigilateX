@@ -1,0 +1,8 @@
+node_modules
+.next
+package-lock.json
+coverage
+test-results
+playwright-report
+.local
+artifacts
