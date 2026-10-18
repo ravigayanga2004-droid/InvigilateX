@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,7 @@ const schema = z.object({
   token: z.string(),
 });
 export function AuthForm({ mode }: { mode: string }) {
+  const hydrated = useSyncExternalStore(() => () => {}, () => true, () => false);
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState("");
@@ -182,7 +183,7 @@ export function AuthForm({ mode }: { mode: string }) {
                 </p>
               )}
               <button
-                disabled={isSubmitting}
+                disabled={!hydrated || isSubmitting}
                 className="btn primary"
                 style={{ padding: 13 }}
               >
