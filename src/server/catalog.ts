@@ -19,6 +19,7 @@ export function examScope(user: Actor): Prisma.ExamWhereInput {
   };
 }
 export async function ownedExam(user: Actor, id: string) {
+  requireRole(user.role, ["ADMIN", "INSTRUCTOR"]);
   const exam = await db.exam.findUnique({
     where: { id },
     include: {

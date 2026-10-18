@@ -17,6 +17,7 @@ import {
   checkOrigin,
 } from "@/lib/security";
 import { questionSchema, answerSchema, passwordSchema } from "@/lib/validation";
+import { csvEscape } from "@/server/reporting";
 describe("assessment rules", () => {
   it("uses stable randomized permutations without losing questions or options", () => {
     const xs = Array.from({ length: 30 }, (_, i) => i);
@@ -97,6 +98,11 @@ describe("assessment rules", () => {
   });
 });
 describe("security contracts", () => {
+  it("neutralizes formula prefixes in exported spreadsheet cells", () => {
+    expect(csvEscape("  =HYPERLINK(\"https://example.test\")")).toMatch(/^"'/);
+    expect(csvEscape("\n+1")).toMatch(/^"'/);
+    expect(csvEscape("Safe, ordinary text")).toBe('"Safe, ordinary text"');
+  });
   it("hashes and verifies passwords", async () => {
     const hash = await hashPassword("A-secure-password-123");
     expect(hash).not.toContain("A-secure");
