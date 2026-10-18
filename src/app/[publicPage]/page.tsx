@@ -1,0 +1,123 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Suspense } from "react";
+import { AuthForm } from "@/components/auth-form";
+const authPages = [
+  "login",
+  "register",
+  "forgot-password",
+  "reset-password",
+  "verify-email",
+];
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ publicPage: string }>;
+}) {
+  const { publicPage } = await params;
+  return {
+    title: publicPage
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(" "),
+  };
+}
+export default async function PublicPage({
+  params,
+}: {
+  params: Promise<{ publicPage: string }>;
+}) {
+  const { publicPage } = await params;
+  if (authPages.includes(publicPage))
+    return (
+      <Suspense
+        fallback={<main className="loading">Loading secure sign-in…</main>}
+      >
+        <AuthForm mode={publicPage} />
+      </Suspense>
+    );
+  if (!["privacy", "terms"].includes(publicPage)) notFound();
+  return (
+    <main className="legal" id="main-content">
+      <Link href="/" className="eyebrow">
+        ← EXAMGUARD
+      </Link>
+      <h1 style={{ marginTop: 25 }}>
+        {publicPage === "privacy"
+          ? "Privacy, with perspective"
+          : "A fair assessment space"}
+      </h1>
+      {publicPage === "privacy" ? (
+        <>
+          <h2>What we store</h2>
+          <p>
+            We store your account details, course enrollment, exam answers,
+            grades, and security audit records to operate the platform.
+            Passwords are stored as hashes. Authentication uses an HTTP-only
+            session cookie.
+          </p>
+          <h2>Transparent exam activity</h2>
+          <p>
+            When enabled for an exam, we record tab visibility, window focus,
+            fullscreen changes, clipboard actions, context menu use, refreshes,
+            connection changes, long inactivity, and rapid answer changes.
+            Events contain their type, timestamp, and configured severity.
+            Activity signals are imperfect and never change an academic score.
+          </p>
+          <h2>Human review comes first</h2>
+          <p>
+            Authorized educators can review activity alongside context. No
+            single event proves misconduct. If a connection interruption or
+            accessibility tool produces an event, explain the situation to your
+            instructor.
+          </p>
+          <h2>What we don’t collect</h2>
+          <p>
+            We do not record your camera, microphone, face, keystrokes, screen,
+            or biometrics. We do not store clipboard contents. Theme preferences
+            are stored on your device.
+          </p>
+          <h2>Access and retention</h2>
+          <p>
+            Students can access their own attempts and released results.
+            Instructors can access their own examinations; administrators manage
+            the institution. Your institution determines retention and handles
+            access, correction, and deletion requests. Contact your
+            institution’s administrator for support.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2>Use your own account</h2>
+          <p>
+            Keep your password private. Use the platform only for assessments
+            you are authorized to access. Do not share questions or attempt to
+            access someone else’s results.
+          </p>
+          <h2>During an examination</h2>
+          <p>
+            Read the exam instructions, availability window, duration, and
+            activity notice before starting. The server enforces the deadline.
+            Your saved answers are submitted when time expires. A network
+            interruption does not pause the clock.
+          </p>
+          <h2>Fairness and accessibility</h2>
+          <p>
+            Follow your institution’s academic integrity policy. Request
+            accommodations before the exam. Browser activity indicators support
+            human review and do not independently determine academic outcomes.
+          </p>
+          <h2>Support and corrections</h2>
+          <p>
+            Contact your instructor about grading and your administrator about
+            account access. Report suspected security issues privately to your
+            institution.
+          </p>
+        </>
+      )}
+      <Link href="/dashboard" className="btn primary" style={{ marginTop: 20 }}>
+        Return to workspace
+      </Link>
+    </main>
+  );
+}

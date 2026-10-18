@@ -1,0 +1,4 @@
+type,text,points,difficulty,topic,tags,correctText,explanation,options
+SINGLE_CHOICE,Which structure uses first-in first-out?,2,EASY,Data structures,queues|fundamentals,,A queue removes the earliest added item.,"[{""text"":""Queue"",""isCorrect"":true},{""text"":""Stack"",""isCorrect"":false}]"
+SHORT_ANSWER,What does CPU stand for?,2,EASY,Hardware,hardware,central processing unit,CPU means central processing unit.,[]
+ESSAY,Explain one benefit of database normalization.,5,MEDIUM,Databases,databases,,Credit clear reasoning about redundancy and consistency.,[]

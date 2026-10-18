@@ -1,0 +1,481 @@
+"use client";
+import Link from "next/link";
+import {
+  BookOpen,
+  Users,
+  Target,
+  ClipboardCheck,
+  Plus,
+  ArrowUpRight,
+  Clock3,
+  CheckCheck,
+  ShieldCheck,
+  ArrowRight,
+  GraduationCap,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
+} from "recharts";
+import { useResource, Loading, Failure, Badge, Empty, date } from "./ui";
+import { Viewer } from "./shell";
+import { DashboardData, ExamRow } from "@/lib/types";
+export function ExamTable({
+  exams,
+  student = false,
+}: {
+  exams: ExamRow[];
+  student?: boolean;
+}) {
+  return exams.length ? (
+    <div className="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Examination</th>
+            <th>Course</th>
+            <th>Schedule</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>
+              <span className="sr-only">Action</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {exams.map((e) => {
+            const status =
+              e.status === "PUBLISHED"
+                ? new Date(e.endAt) < new Date()
+                  ? "CLOSED"
+                  : new Date(e.startAt) > new Date()
+                    ? "SCHEDULED"
+                    : "ACTIVE"
+                : e.status;
+            return (
+              <tr key={e.id}>
+                <td>
+                  <Link className="row" href={`/dashboard/exams/${e.id}`}>
+                    <span className="courseicon">
+                      <BookOpen size={17} />
+                    </span>
+                    <span>
+                      <strong>{e.title}</strong>
+                      <small style={{ display: "block", fontSize: 10 }}>
+                        {e._count?.questions ?? e.questions?.length ?? 0}{" "}
+                        questions · {e.maxAttempts} attempt
+                        {e.maxAttempts > 1 ? "s" : ""}
+                      </small>
+                    </span>
+                  </Link>
+                </td>
+                <td>{e.course?.code || "—"}</td>
+                <td>
+                  {date(e.startAt, { month: "short", day: "numeric" })}
+                  <small style={{ display: "block", fontSize: 10 }}>
+                    {new Date(e.startAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </small>
+                </td>
+                <td>
+                  <span className="row" style={{ gap: 5 }}>
+                    <Clock3 size={12} />
+                    {Math.round(e.durationSeconds / 60)} min
+                  </span>
+                </td>
+                <td>
+                  <Badge status={status} />
+                </td>
+                <td>
+                  <Link
+                    href={`/dashboard/exams/${e.id}`}
+                    className="iconbtn"
+                    aria-label={`${student ? "Open" : "Manage"} ${e.title}`}
+                    style={{ border: 0 }}
+                  >
+                    <ArrowUpRight size={16} />
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <Empty
+      title="No examinations yet"
+      description={
+        student
+          ? "Your assigned examinations will appear here."
+          : "Create your first examination to get started."
+      }
+    />
+  );
+}
+export function Overview({ user }: { user: Viewer }) {
+  const { data, error, loading, reload } =
+    useResource<DashboardData>("dashboard");
+  if (loading) return <Loading />;
+  if (error || !data) return <Failure message={error} retry={reload} />;
+  const student = user.role === "STUDENT";
+  const active = data.exams.filter(
+    (e) => e.status === "PUBLISHED" && new Date(e.endAt) > new Date(),
+  );
+  const stats = [
+    {
+      label: student ? "Assigned examinations" : "Total examinations",
+      value: data.exams.length,
+      Icon: BookOpen,
+      note: `${active.length} currently available or upcoming`,
+    },
+    {
+      label: student ? "My submissions" : "Recorded attempts",
+      value: data.attempts.length,
+      Icon: Users,
+      note: student ? "Your learning, at a glance" : "Across your examinations",
+    },
+    {
+      label: "Average score",
+      value: `${data.stats.average.toFixed(1)}%`,
+      Icon: Target,
+      note: `${data.stats.count} graded ${student ? "and released " : ""}results`,
+    },
+    {
+      label: student ? "Enrolled courses" : "Completion rate",
+      value: student ? data.courses : `${data.completionRate.toFixed(0)}%`,
+      Icon: ClipboardCheck,
+      note: student
+        ? "Your connected classrooms"
+        : "Submitted / started attempts",
+    },
+  ];
+  const trend = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6 + i);
+    const subset = data.attempts.filter(
+      (a) =>
+        a.submittedAt &&
+        new Date(a.submittedAt).toDateString() === d.toDateString(),
+    );
+    return {
+      day: d.toLocaleDateString(undefined, { weekday: "short" }),
+      submissions: subset.length,
+    };
+  });
+  return (
+    <div className="stack">
+      <div className="pagehead between" style={{ marginBottom: 3 }}>
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>
+            YOUR WORKSPACE, AT A GLANCE
+          </div>
+          <h1>Overview</h1>
+          <p>
+            Welcome back, {user.name.split(" ")[0]}. Here’s where things stand.
+          </p>
+        </div>
+        <Link
+          href={student ? "/dashboard/exams" : "/dashboard/exams/new"}
+          className="btn primary"
+        >
+          {student ? <BookOpen size={15} /> : <Plus size={16} />}{" "}
+          {student ? "Explore my exams" : "Create examination"}
+        </Link>
+      </div>
+      <section className="card welcome">
+        <div className="between">
+          <div>
+            <span className="eyebrow">A LITTLE CLARITY GOES A LONG WAY</span>
+            <h2>
+              {student
+                ? "Your next step starts here."
+                : "More insight. Better outcomes."}
+            </h2>
+            <p>
+              {student
+                ? "Find your upcoming exams, pick up where you left off, and see how far you’ve come."
+                : "Your examinations, student progress, and assessment insights — together in one thoughtful workspace."}
+            </p>
+          </div>
+          <Link
+            href={student ? "/dashboard/exams" : "/dashboard/analytics"}
+            className="btn"
+          >
+            {student ? "View my exams" : "Explore insights"}
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      </section>
+      <section className="grid4" aria-label="Key metrics">
+        {stats.map(({ label, value, Icon, note }) => (
+          <article className="card stat" key={label}>
+            <div className="between">
+              <span className="stat-icon">
+                <Icon size={19} />
+              </span>
+              <ArrowUpRight size={14} color="var(--muted)" />
+            </div>
+            <p className="stat-label">{label}</p>
+            <div className="stat-value">{value}</div>
+            <small>{note}</small>
+          </article>
+        ))}
+      </section>
+      <div className="grid2 dashboardcharts">
+        <section className="card">
+          <div className="sectionhead between">
+            <div>
+              <h2>Assessment activity</h2>
+              <p>Submissions over the last seven days</p>
+            </div>
+            <span className="badge">LAST 7 DAYS</span>
+          </div>
+          <div
+            className="chart"
+            role="img"
+            aria-label={`Submission trend: ${trend.map((t) => `${t.day} ${t.submissions}`).join(", ")}`}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={trend}
+                margin={{ left: -25, right: 5, top: 10, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="activityGradient"
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor="#169b84" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#169b84" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--border)"
+                  strokeDasharray="3 5"
+                />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--muted)", fontSize: 10 }}
+                  dy={8}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--muted)", fontSize: 10 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    color: "var(--text)",
+                    fontSize: 12,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="submissions"
+                  stroke="#169b84"
+                  strokeWidth={2.5}
+                  fill="url(#activityGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+        <section className="card">
+          <div className="sectionhead">
+            <h2>Performance snapshot</h2>
+            <p>Distribution of graded results</p>
+          </div>
+          <div
+            className="chart"
+            style={{ height: 185 }}
+            role="img"
+            aria-label={data.stats.distribution
+              .map((d) => `${d.label}: ${d.count}`)
+              .join(", ")}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data.stats.distribution}
+                margin={{ left: -30, right: 0 }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--border)"
+                  strokeDasharray="3 5"
+                />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "var(--muted)" }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: "var(--muted)" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text)",
+                    fontSize: 12,
+                  }}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#45a895"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={35}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div
+            className="between"
+            style={{
+              borderTop: "1px solid var(--border)",
+              paddingTop: 15,
+              marginTop: 10,
+            }}
+          >
+            <span className="muted" style={{ fontSize: 11 }}>
+              Pass rate
+            </span>
+            <strong style={{ color: "var(--accent)" }}>
+              {data.passRate.toFixed(0)}%{" "}
+              <CheckCheck size={13} style={{ display: "inline" }} />
+            </strong>
+          </div>
+        </section>
+      </div>
+      <section className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="between" style={{ padding: "22px 24px 17px" }}>
+          <div>
+            <h2>{student ? "Your examinations" : "Examination overview"}</h2>
+            <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+              Everything you need for your next assessment
+            </p>
+          </div>
+          <Link href="/dashboard/exams" className="btn small">
+            View all <ArrowRight size={12} />
+          </Link>
+        </div>
+        <ExamTable exams={data.exams.slice(0, 4)} student={student} />
+      </section>
+      <div className="grid2">
+        <section className="card">
+          <div className="between sectionhead">
+            <div>
+              <h2>Recent activity</h2>
+              <p>The latest updates from your workspace</p>
+            </div>
+            <span className="courseicon">
+              <ActivityIcon />
+            </span>
+          </div>
+          {data.activity.length ? (
+            data.activity.map((item) => (
+              <div className="activity-item" key={item.id}>
+                <span className="activity-dot">
+                  <CheckCheck size={13} />
+                </span>
+                <div>
+                  <strong>
+                    {item.title ||
+                      item.action?.replaceAll("_", " ").toLowerCase()}
+                  </strong>
+                  <p>
+                    {item.actor?.name || item.message || "Workspace update"}
+                  </p>
+                  <small>
+                    {date(item.createdAt, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </small>
+                </div>
+              </div>
+            ))
+          ) : (
+            <Empty
+              title="You’re all caught up"
+              description="New workspace updates will appear here."
+            />
+          )}
+        </section>
+        <section className="card">
+          <h2>A little more peace of mind</h2>
+          <p className="muted" style={{ fontSize: 12, margin: "7px 0 23px" }}>
+            Designed around people, with security at every step.
+          </p>
+          {[
+            {
+              Icon: ShieldCheck,
+              title: "Assessment integrity",
+              text: "Activity signals support fair human review.",
+            },
+            {
+              Icon: GraduationCap,
+              title: `${data.courses} connected courses`,
+              text: "A clear home for every learning journey.",
+            },
+            {
+              Icon: Clock3,
+              title: "Saved as you go",
+              text: "Server-timed attempts and reliable answer saving.",
+            },
+          ].map(({ Icon, title, text }) => (
+            <div className="activity-item" key={title}>
+              <span className="courseicon">
+                <Icon size={17} />
+              </span>
+              <div>
+                <strong>{title}</strong>
+                <p>{text}</p>
+              </div>
+            </div>
+          ))}
+          <Link
+            href="/privacy"
+            className="row"
+            style={{
+              marginTop: 18,
+              fontSize: 11,
+              color: "var(--accent)",
+              fontWeight: 600,
+            }}
+          >
+            Our approach to privacy <ArrowUpRight size={13} />
+          </Link>
+        </section>
+      </div>
+    </div>
+  );
+}
+function ActivityIcon() {
+  return <ClipboardCheck size={17} />;
+}
